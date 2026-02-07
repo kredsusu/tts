@@ -53,25 +53,22 @@
     .meta { font-size: 12px; opacity: .78; margin-bottom: 3px; }
     .text { font-size: 14px; line-height: 1.25; }
 
-    #setup {
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      width: min(640px, calc(100vw - 28px));
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(10,12,16,0.55);
-      border: 1px solid rgba(180,200,255,0.20);
-      backdrop-filter: blur(10px);
-      color: rgba(245,248,255,0.92);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    #inputBar {
+      margin-top: 10px;
+      display: none;
       pointer-events: auto;
       user-select: auto;
     }
 
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .hidden { display:none !important; }
-    #status { font-size: 12px; opacity: .82; margin-top: 8px; }
+    #inputWrap {
+      display:flex;
+      gap:10px;
+      background: rgba(10,12,16,0.5);
+      border: 1px solid rgba(180,200,255,0.22);
+      border-radius: 14px;
+      padding: 10px;
+      backdrop-filter: blur(8px);
+    }
 
     input, button {
       border-radius: 12px;
@@ -81,8 +78,34 @@
       padding: 10px 12px;
       outline: none;
     }
-    input { flex:1; min-width: 160px; }
+
+    input { flex:1; }
     button { cursor:pointer; }
+
+    #hint {
+      margin-top: 8px;
+      font-size: 12px;
+      opacity: .75;
+      pointer-events: none;
+    }
+
+    #setup {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      width: min(520px, calc(100vw - 28px));
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(10,12,16,0.55);
+      border: 1px solid rgba(180,200,255,0.20);
+      backdrop-filter: blur(10px);
+      color: rgba(245,248,255,0.92);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .hidden { display:none !important; }
+    #status { font-size: 12px; opacity: .82; margin-top: 8px; }
   </style>
 </head>
 
@@ -94,15 +117,11 @@
       <input id="room" placeholder="Szoba (pl. f13-private)" />
       <input id="name" placeholder="Neved" />
       <button id="join">Csatlakozás</button>
-      <button id="openPopup" disabled>Írás megnyitása (popup)</button>
       <button id="ttsToggle" disabled>TTS: OFF</button>
     </div>
     <div id="status">Állapot: nincs csatlakozva</div>
     <div style="margin-top:6px;font-size:12px;opacity:.75">
-      Hotkeys (fő ablak): T = popup fókusz • Ctrl+M = TTS
-    </div>
-    <div style="margin-top:6px;font-size:12px;opacity:.75">
-      Tipp: elsőre kattints az „Írás megnyitása (popup)” gombra (a böngésző csak kattintásra enged új ablakot).
+      Hotkeys: T = írni • Enter = küld • Esc = bezár • Ctrl+M = TTS
     </div>
   </div>
 
@@ -110,6 +129,14 @@
   <div id="hud" class="hidden">
     <div id="panel">
       <div id="log"></div>
+    </div>
+
+    <div id="inputBar">
+      <div id="inputWrap">
+        <input id="text" placeholder="Írj..." autocomplete="off" />
+        <button id="send">Küld</button>
+      </div>
+      <div id="hint">T: írni • Ctrl+M: magyar hangfelolvasás</div>
     </div>
   </div>
 
@@ -135,73 +162,50 @@
     const setup = $("setup");
     const hud = $("hud");
     const log = $("log");
-    const status = know("status");
-
-    function know(id){ return document.getElementById(id); }
-
+    const status = $("status");
     const roomIn = $("room");
     const nameIn = $("name");
     const joinBtn = $("join");
-    const openPopupBtn = $("openPopup");
     const ttsBtn = $("ttsToggle");
+    const inputBar = $("inputBar");
+    const textIn = $("text");
+    const sendBtn = $("send");
 
     let roomRef = null;
     let myName = "";
     let roomName = "";
     let ttsEnabled = false;
 
-    // Popup window handle
-    let popupWin = null;
-
-    // Shared state key (popup innen olvassa)
-    const LS_KEY = "f13_chat_state_v1";
-
     function speak(text) {
       if (!ttsEnabled || !("speechSynthesis" in window)) return;
-      window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "hu-HU";
       window.speechSynthesis.speak(u);
     }
 
-    function esc(s){
-      return (s ?? "").replace(/[&<>"']/g, c => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-      }[c]));
-    }
-
     function addMsg(name, text, ts) {
       const d = document.createElement("div");
       d.className = "msg";
-      d.innerHTML =
-        `<div class="meta">${esc(name)} • ${new Date(ts).toLocaleTimeString()}</div>` +
-        `<div class="text">${esc(text)}</div>`;
+      d.innerHTML = `<div class="meta">${name} • ${new Date(ts).toLocaleTimeString()}</div><div class="text">${text}</div>`;
       log.appendChild(d);
       while (log.children.length > 10) log.removeChild(log.firstChild);
     }
 
     function setConnected(on) {
       ttsBtn.disabled = !on;
-      openPopupBtn.disabled = !on;
       if (on) {
         setup.classList.add("hidden");
         hud.classList.remove("hidden");
+        status.textContent = `Csatlakozva: ${roomName}`;
+      } else {
+        status.textContent = "Állapot: nincs csatlakozva";
       }
-    }
-
-    function saveState() {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        roomName,
-        myName
-      }));
     }
 
     joinBtn.onclick = () => {
       roomName = roomIn.value.trim();
       myName = nameIn.value.trim() || "Player";
       if (!roomName) return alert("Adj meg szoba nevet!");
-
-      saveState();
 
       log.innerHTML = "";
       roomRef = ref(db, `rooms/${roomName}/messages`);
@@ -215,57 +219,33 @@
       });
 
       setTimeout(() => ready = true, 1200);
-
-      status.textContent = `Csatlakozva: ${roomName}`;
       setConnected(true);
     };
 
-    // Open popup (only on click)
-    openPopupBtn.onclick = () => {
-      if (!roomName) return alert("Előbb csatlakozz!");
-      saveState();
+    function send() {
+      if (!roomRef) return;
+      const text = textIn.value.trim();
+      if (!text) return;
+      textIn.value = "";
+      push(roomRef, { name: myName, text, ts: Date.now() });
+    }
 
-      const w = window.open(
-        "popup.html",
-        "F13InputPopup",
-        "width=560,height=170,resizable=yes,scrollbars=no"
-      );
+    sendBtn.onclick = send;
 
-      if (!w) return alert("A böngésző blokkolta a pop-upot. Engedélyezd a felugró ablakokat ehhez az oldalhoz.");
-
-      popupWin = w;
-
-      // kis késleltetés után fókusz kérés (nem gond, ha nem sikerül azonnal)
-      setTimeout(() => {
-        try {
-          popupWin.focus();
-          popupWin.postMessage({ type: "focusInput" }, "*");
-        } catch {}
-      }, 200);
+    textIn.onkeydown = e => {
+      if (e.key === "Enter") send();
+      if (e.key === "Escape") inputBar.style.display = "none";
     };
 
-    // TTS toggle
-    ttsBtn.onclick = () => {
-      ttsEnabled = !ttsEnabled;
-      ttsBtn.textContent = `TTS: ${ttsEnabled ? "ON" : "OFF"}`;
-      if (ttsEnabled) speak("Magyar hangfelolvasás bekapcsolva.");
-    };
-
-    // Hotkey: T -> ha a popup nyitva van, fókusz és input fókusz
     window.addEventListener("keydown", e => {
       if (e.ctrlKey && (e.key === "m" || e.key === "M")) {
         ttsEnabled = !ttsEnabled;
         ttsBtn.textContent = `TTS: ${ttsEnabled ? "ON" : "OFF"}`;
         if (ttsEnabled) speak("Magyar hangfelolvasás bekapcsolva.");
       }
-
-      if (e.key.toLowerCase() === "t") {
-        if (popupWin && !popupWin.closed) {
-          try {
-            popupWin.focus();
-            popupWin.postMessage({ type: "focusInput" }, "*");
-          } catch {}
-        }
+      if (e.key.toLowerCase() === "t" && document.activeElement.tagName !== "INPUT") {
+        inputBar.style.display = "block";
+        textIn.focus();
       }
     });
 
