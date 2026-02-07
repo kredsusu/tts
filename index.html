@@ -8,12 +8,9 @@
   <style>
     :root { color-scheme: dark; }
     html, body { height:100%; margin:0; background: transparent; }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow: hidden;
-    }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; overflow:hidden; }
 
-    /* HUD */
+    /* HUD container */
     #hud {
       position: fixed;
       left: 18px;
@@ -23,54 +20,54 @@
       user-select: none;
     }
 
+    /* Message panel */
     #panel {
       pointer-events: none;
       border-radius: 14px;
-      padding: 10px;
-      background: rgba(10,12,16,0.35);
-      border: 1px solid rgba(180,200,255,0.18);
+      padding: 10px 10px 8px;
+      background: rgba(10, 12, 16, 0.35);
+      border: 1px solid rgba(180, 200, 255, 0.18);
       backdrop-filter: blur(6px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
 
     #log {
       height: 220px;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      overflow: hidden;
     }
 
     .msg {
       padding: 8px 10px;
       border-radius: 12px;
-      background: rgba(15,18,24,0.35);
-      border: 1px solid rgba(180,200,255,0.10);
-      color: rgba(245,248,255,0.92);
+      background: rgba(15, 18, 24, 0.35);
+      border: 1px solid rgba(180, 200, 255, 0.10);
+      color: rgba(245, 248, 255, 0.92);
       text-shadow: 0 1px 2px rgba(0,0,0,0.35);
     }
-
     .meta { font-size: 12px; opacity: .78; margin-bottom: 3px; }
-    .text { font-size: 14px; line-height: 1.25; }
+    .text { font-size: 14px; line-height: 1.25; word-wrap: break-word; }
 
+    /* Input bar */
     #inputBar {
       margin-top: 10px;
       display: none;
       pointer-events: auto;
       user-select: auto;
     }
-
     #inputWrap {
       display:flex;
       gap:10px;
-      background: rgba(10,12,16,0.5);
-      border: 1px solid rgba(180,200,255,0.22);
+      align-items:center;
+      background: rgba(10, 12, 16, 0.50);
+      border: 1px solid rgba(180, 200, 255, 0.22);
       border-radius: 14px;
       padding: 10px;
       backdrop-filter: blur(8px);
     }
-
-    input, button {
+    input, select, button {
       border-radius: 12px;
       border: 1px solid rgba(180,200,255,0.22);
       background: rgba(0,0,0,0.25);
@@ -78,50 +75,77 @@
       padding: 10px 12px;
       outline: none;
     }
-
-    input { flex:1; }
+    input { flex:1; min-width: 120px; }
     button { cursor:pointer; }
-
     #hint {
       margin-top: 8px;
       font-size: 12px;
-      opacity: .75;
+      color: rgba(245,248,255,0.75);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.35);
       pointer-events: none;
     }
 
+    /* Setup box */
     #setup {
       position: fixed;
       top: 14px;
       left: 14px;
-      width: min(520px, calc(100vw - 28px));
+      width: min(760px, calc(100vw - 28px));
       border-radius: 14px;
       padding: 12px;
-      background: rgba(10,12,16,0.55);
+      background: rgba(10, 12, 16, 0.55);
       border: 1px solid rgba(180,200,255,0.20);
       backdrop-filter: blur(10px);
       color: rgba(245,248,255,0.92);
       box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      pointer-events: auto;
+      user-select: auto;
     }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    #setup input { flex: 1; min-width: 160px; }
+    #setup select { min-width: 180px; }
+    #status { margin-top: 8px; font-size: 12px; opacity: 0.82; }
 
-    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .small { font-size: 12px; opacity: .78; }
     .hidden { display:none !important; }
-    #status { font-size: 12px; opacity: .82; margin-top: 8px; }
+
+    .check {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding: 6px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(180,200,255,0.18);
+      background: rgba(0,0,0,0.18);
+    }
+    .check input { width: 18px; height: 18px; }
   </style>
 </head>
 
 <body>
-
   <!-- Setup -->
   <div id="setup">
     <div class="row">
       <input id="room" placeholder="Szoba (pl. f13-private)" />
       <input id="name" placeholder="Neved" />
+
+      <select id="style" title="Hang stílus (pitch+rate preset)">
+        <!-- JS tölti -->
+      </select>
+
+      <label class="check" title="Ha be van kapcsolva, a másik játékos saját stílusát fogod hallani (ha ő is választott).">
+        <input id="useSenderStyle" type="checkbox" />
+        <span class="small">Mások stílusát használjam</span>
+      </label>
+
       <button id="join">Csatlakozás</button>
-      <button id="ttsToggle" disabled>TTS: OFF</button>
+      <button id="ttsToggle" title="Ctrl+M" disabled>TTS: OFF</button>
+      <button id="testVoice" title="Stílus teszt">Próba</button>
     </div>
+
     <div id="status">Állapot: nincs csatlakozva</div>
-    <div style="margin-top:6px;font-size:12px;opacity:.75">
-      Hotkeys: T = írni • Enter = küld • Esc = bezár • Ctrl+M = TTS
+    <div class="small" style="margin-top:6px;">
+      Hotkeys: <b>T</b>=írni • <b>Enter</b>=küld • <b>Esc</b>=kilép írásból • <b>Ctrl+M</b>=TTS
     </div>
   </div>
 
@@ -133,10 +157,10 @@
 
     <div id="inputBar">
       <div id="inputWrap">
-        <input id="text" placeholder="Írj..." autocomplete="off" />
+        <input id="text" placeholder="Írj... (Enter küld, Esc bezár)" autocomplete="off" />
         <button id="send">Küld</button>
       </div>
-      <div id="hint">T: írni • Ctrl+M: magyar hangfelolvasás</div>
+      <div id="hint">T: írni • Ctrl+M: TTS • Stílus: a setup-ban</div>
     </div>
   </div>
 
@@ -144,6 +168,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
+    // --- Firebase config (a tiéd) ---
     const firebaseConfig = {
       apiKey: "AIzaSyB7hcpdkq6AfiCB-53bXRlx6YaB-40bc-U",
       authDomain: "text-b6f9b.firebaseapp.com",
@@ -154,101 +179,236 @@
       appId: "1:736236726211:web:c73aa0b1a764038e5fff76"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // --- Styles (pitch+rate presetek) ---
+    const VOICE_STYLES = {
+      normal:     { label: "Stílus: Normál",      rate: 1.00, pitch: 1.00 },
+      fast:       { label: "Stílus: Pörgős",      rate: 1.35, pitch: 1.10 },
+      deep:       { label: "Stílus: Mély",        rate: 1.00, pitch: 0.75 },
+      funny:      { label: "Stílus: Vicces",      rate: 1.15, pitch: 1.35 },
+      caricature: { label: "Stílus: Karikatúra",  rate: 1.40, pitch: 1.60 }
+    };
 
-    const $ = id => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
 
     const setup = $("setup");
     const hud = $("hud");
     const log = $("log");
     const status = $("status");
+
     const roomIn = $("room");
     const nameIn = $("name");
+    const styleSel = $("style");
+    const useSenderStyleCb = $("useSenderStyle");
+
     const joinBtn = $("join");
     const ttsBtn = $("ttsToggle");
+    const testBtn = $("testVoice");
+
     const inputBar = $("inputBar");
     const textIn = $("text");
     const sendBtn = $("send");
 
-    let roomRef = null;
-    let myName = "";
+    // --- Remember user prefs (opcionális, de kényelmes) ---
+    const LS_KEY = "f13_hud_chat_prefs_v1";
+    function loadPrefs() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch { return {}; }
+    }
+    function savePrefs(p) {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch {}
+    }
+    const prefs = loadPrefs();
+
+    // Fill styles dropdown
+    for (const [key, s] of Object.entries(VOICE_STYLES)) {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = s.label;
+      styleSel.appendChild(opt);
+    }
+    styleSel.value = prefs.styleKey || "normal";
+    useSenderStyleCb.checked = !!prefs.useSenderStyle;
+
+    let selectedStyleKey = styleSel.value;
+    let selectedStyle = VOICE_STYLES[selectedStyleKey] || VOICE_STYLES.normal;
+
+    styleSel.addEventListener("change", () => {
+      selectedStyleKey = styleSel.value;
+      selectedStyle = VOICE_STYLES[selectedStyleKey] || VOICE_STYLES.normal;
+      savePrefs({ ...loadPrefs(), styleKey: selectedStyleKey });
+    });
+
+    useSenderStyleCb.addEventListener("change", () => {
+      savePrefs({ ...loadPrefs(), useSenderStyle: useSenderStyleCb.checked });
+    });
+
+    // --- Firebase init ---
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let roomRef;
+    let myName = "Player";
     let roomName = "";
     let ttsEnabled = false;
 
-    function speak(text) {
-      if (!ttsEnabled || !("speechSynthesis" in window)) return;
+    // --- TTS helpers ---
+    function pickHungarianVoice() {
+      const voices = window.speechSynthesis?.getVoices?.() || [];
+      return voices.find(v => (v.lang || "").toLowerCase().startsWith("hu")) || null;
+    }
+
+    function speakHungarian(text, styleObj) {
+      if (!ttsEnabled) return;
+      if (!("speechSynthesis" in window)) return;
+
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "hu-HU";
+      const v = pickHungarianVoice();
+      if (v) u.voice = v;
+
+      // Style
+      const st = styleObj || selectedStyle || VOICE_STYLES.normal;
+      u.rate = st.rate;
+      u.pitch = st.pitch;
+      u.volume = 1.0;
+
       window.speechSynthesis.speak(u);
     }
 
-    function addMsg(name, text, ts) {
+    // --- UI helpers ---
+    function escapeHtml(s) {
+      return (s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+      }[c]));
+    }
+
+    const MAX_MSG = 10;
+    function addMsg({ name, text, ts, styleKey }) {
       const d = document.createElement("div");
       d.className = "msg";
-      d.innerHTML = `<div class="meta">${name} • ${new Date(ts).toLocaleTimeString()}</div><div class="text">${text}</div>`;
+      const when = ts ? new Date(ts).toLocaleTimeString() : "";
+      const styleLabel = styleKey && VOICE_STYLES[styleKey] ? ` • ${VOICE_STYLES[styleKey].label.replace("Stílus: ","")}` : "";
+      d.innerHTML = `
+        <div class="meta">${escapeHtml(name)} • ${when}${escapeHtml(styleLabel)}</div>
+        <div class="text">${escapeHtml(text)}</div>
+      `;
       log.appendChild(d);
-      while (log.children.length > 10) log.removeChild(log.firstChild);
+      while (log.children.length > MAX_MSG) log.removeChild(log.firstChild);
     }
 
     function setConnected(on) {
       ttsBtn.disabled = !on;
       if (on) {
+        status.textContent = `Állapot: csatlakozva • szoba: ${roomName}`;
         setup.classList.add("hidden");
         hud.classList.remove("hidden");
-        status.textContent = `Csatlakozva: ${roomName}`;
       } else {
         status.textContent = "Állapot: nincs csatlakozva";
       }
     }
 
-    joinBtn.onclick = () => {
+    // --- Join room ---
+    joinBtn.addEventListener("click", () => {
       roomName = roomIn.value.trim();
-      myName = nameIn.value.trim() || "Player";
+      myName = (nameIn.value.trim() || "Player").slice(0, 24);
       if (!roomName) return alert("Adj meg szoba nevet!");
+
+      // Save prefs
+      savePrefs({ ...loadPrefs(), styleKey: selectedStyleKey, useSenderStyle: useSenderStyleCb.checked });
 
       log.innerHTML = "";
       roomRef = ref(db, `rooms/${roomName}/messages`);
-      const q = query(roomRef, limitToLast(50));
-      let ready = false;
 
-      onChildAdded(q, snap => {
-        const m = snap.val();
-        addMsg(m.name, m.text, m.ts);
-        if (ready && m.name !== myName) speak(`${m.name} azt írja: ${m.text}`);
+      const q = query(roomRef, limitToLast(50));
+      let firstBatch = true;
+
+      onChildAdded(q, (snap) => {
+        const msg = snap.val() || {};
+        addMsg({ name: msg.name || "?", text: msg.text || "", ts: msg.ts || Date.now(), styleKey: msg.styleKey });
+
+        // Felolvasás: csak másoktól
+        if (!firstBatch && msg?.name && msg?.text && msg.name !== myName) {
+          const useSender = useSenderStyleCb.checked;
+          const senderStyle = (useSender && msg.styleKey && VOICE_STYLES[msg.styleKey]) ? VOICE_STYLES[msg.styleKey] : selectedStyle;
+          speakHungarian(`${msg.name} azt írja: ${msg.text}`, senderStyle);
+        }
       });
 
-      setTimeout(() => ready = true, 1200);
       setConnected(true);
-    };
-
-    function send() {
-      if (!roomRef) return;
-      const text = textIn.value.trim();
-      if (!text) return;
-      textIn.value = "";
-      push(roomRef, { name: myName, text, ts: Date.now() });
-    }
-
-    sendBtn.onclick = send;
-
-    textIn.onkeydown = e => {
-      if (e.key === "Enter") send();
-      if (e.key === "Escape") inputBar.style.display = "none";
-    };
-
-    window.addEventListener("keydown", e => {
-      if (e.ctrlKey && (e.key === "m" || e.key === "M")) {
-        ttsEnabled = !ttsEnabled;
-        ttsBtn.textContent = `TTS: ${ttsEnabled ? "ON" : "OFF"}`;
-        if (ttsEnabled) speak("Magyar hangfelolvasás bekapcsolva.");
-      }
-      if (e.key.toLowerCase() === "t" && document.activeElement.tagName !== "INPUT") {
-        inputBar.style.display = "block";
-        textIn.focus();
-      }
+      setTimeout(() => { firstBatch = false; }, 1200);
     });
 
+    // --- Send message (mindig elküldjük a választott styleKey-t) ---
+    function send() {
+      const text = textIn.value.trim();
+      if (!text || !roomRef) return;
+      textIn.value = "";
+
+      push(roomRef, {
+        name: myName,
+        text,
+        ts: Date.now(),
+        styleKey: selectedStyleKey
+      });
+    }
+
+    sendBtn.addEventListener("click", send);
+    textIn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+      if (e.key === "Escape") hideInput();
+    });
+
+    // --- Input show/hide ---
+    function showInput() {
+      inputBar.style.display = "block";
+      textIn.focus();
+      textIn.select();
+    }
+    function hideInput() {
+      inputBar.style.display = "none";
+      textIn.blur();
+    }
+
+    // --- Global hotkeys ---
+    window.addEventListener("keydown", (e) => {
+      // Ctrl+M: TTS toggle
+      if (e.ctrlKey && (e.key === "m" || e.key === "M")) {
+        e.preventDefault();
+        toggleTTS();
+        return;
+      }
+
+      // T: show input (ha nem inputban vagy)
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      const typingInField = activeTag === "input" || activeTag === "textarea";
+
+      if (!typingInField && (e.key === "t" || e.key === "T")) {
+        e.preventDefault();
+        showInput();
+      }
+
+      // Esc: hide input
+      if (e.key === "Escape") hideInput();
+    });
+
+    // --- TTS toggle + test ---
+    function toggleTTS() {
+      ttsEnabled = !ttsEnabled;
+      ttsBtn.textContent = `TTS: ${ttsEnabled ? "ON" : "OFF"}`;
+      if (ttsEnabled) speakHungarian("Magyar hangfelolvasás bekapcsolva.", selectedStyle);
+    }
+    ttsBtn.addEventListener("click", toggleTTS);
+
+    testBtn.addEventListener("click", () => {
+      const was = ttsEnabled;
+      ttsEnabled = true;
+      speakHungarian("Próba. Ez a kiválasztott hangstílus.", selectedStyle);
+      ttsEnabled = was;
+    });
+
+    // Start state
     setConnected(false);
   </script>
 </body>
